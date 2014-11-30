@@ -4,7 +4,8 @@
 
 # Home page
 GET     /                           controllers.Application.index()
-GET    /person                     controllers.Application.savePerson()
+GET    /savePerson                 controllers.Application.savePerson()
+GET    /savePersonAsync           controllers.Application.savePersonAsync()
 GET    /person/66                 controllers.Application.getPerson()
 
 # Map static resources from the /public folder to the /assets URL path

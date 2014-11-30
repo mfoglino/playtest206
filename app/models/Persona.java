@@ -19,6 +19,7 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 import play.db.jpa.JPA;
 import play.libs.Akka;
 import play.libs.F.Promise;
+import scala.util.control.Exception;
 
 @Data
 @Entity
@@ -47,30 +48,20 @@ public class Persona implements Cloneable {
 
 	public Promise<Persona> saveOrUpdateAsync() {
 		final Persona person = this;
-		//JPA.em().detach(person);
+		JPA.em().detach(person);
 
 		final EntityManager em = JPA.em();
 		
 		return Akka.future(new Callable<Persona>() {
 			@Override
 			public Persona call() {
-				try {
-					//JPA.bindForCurrentThread(em);					
-					//return JPA.withTransaction(new F.Function0<Persona>() {
-					//	@Override
-					//	public Persona apply() throws Throwable {
-					
+				try {					
 					JPA.bindForCurrentThread(em);
-					//EntityTransaction tx = JPA.em().getTransaction();
-					//EntityTransaction tx = em.getTransaction();
-					//tx.begin();
 					Persona merge = JPA.em().merge(person);
 					
-					//tx.commit();
-					return merge;
 					
-					//	}
-					//});
+					//throw new RuntimeException("catcheate esta");
+					return merge;
 				}
 				catch (Throwable e) {
 					throw new RuntimeException("Error saving Persona:" + person.getDni(), e);
