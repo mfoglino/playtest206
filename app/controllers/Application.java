@@ -1,9 +1,12 @@
 package controllers;
 
+import java.util.concurrent.Callable;
+
 import models.Persona;
 import play.db.jpa.JPA;
 import play.db.jpa.Transactional;
-import play.libs.Json;
+import play.libs.Akka;
+import play.libs.F;
 import play.libs.F.Function;
 import play.libs.F.Promise;
 import play.mvc.Controller;
@@ -31,7 +34,7 @@ public class Application extends Controller {
 		}
 	}
 
-	@Transactional
+	// @Transactional
 	public static Result savePersonAsync() {
 		try {
 
@@ -42,8 +45,8 @@ public class Application extends Controller {
 
 				@Override
 				public Result apply(Boolean r) throws Throwable {
-					System.out.println("Person was saved...");
-					return ok("Person saved:" + r);
+					System.out.println("Persons was saved...");
+					return ok("Persons saved:" + r);
 
 				}
 
@@ -63,7 +66,7 @@ public class Application extends Controller {
 
 		catch (Exception e) {
 			System.out.println("rollbacking transaction");
-			JPA.em().getTransaction().setRollbackOnly();
+			// JPA.em().getTransaction().setRollbackOnly();
 			return internalServerError("error saving");
 		}
 	}
@@ -87,53 +90,44 @@ public class Application extends Controller {
 
 	@Transactional
 	private static Promise<Boolean> savingTwoPersonsAsync() {
-		Persona p = new Persona();
-		p.setDni(66);
-		p.setNombre("bruce");
 
-		Promise<Persona> saveOrUpdateAsync = p.saveOrUpdateAsync();
+		return Akka.future(new Callable<Boolean>() {
+			@Override
+			public Boolean call() {
+				try {
+					return JPA.withTransaction(new F.Function0<Boolean>() {
+						@Override
+						public Boolean apply() throws Throwable {						
+							
+							try {
+								Persona p = new Persona();
+								p.setDni(66);
+								p.setNombre("bruce");
 
-		Persona p2 = new Persona();
-		p2.setDni(88);
-		p2.setNombre("steve");
+								Persona p2 = new Persona();
+								p2.setDni(88);
+								p2.setNombre("steve");
 
-		final Promise<Persona> saveOrUpdateAsync2 = p2.saveOrUpdateAsync();
+								p.saveOrUpdate();
+								p2.saveOrUpdate();
 
-		try {
-
-			Promise<Boolean> savingPromise = saveOrUpdateAsync.flatMap(new Function<Persona, Promise<Boolean>>() {
-
-				@Override
-				public Promise<Boolean> apply(Persona p) throws Throwable {
-
-					return saveOrUpdateAsync2.map(new Function<Persona, Boolean>() {
-						public Boolean apply(Persona p2) {
-
-							return true;
-
+								// throw new RuntimeException("catcheate esta");
+								return true;
+							} catch (Throwable e) {
+								JPA.em().getTransaction().setRollbackOnly();
+								return false;
+								// throw new RuntimeException("Error saving Personas...", e);
+							}				
+							
 						}
 					});
+				} catch (Throwable e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					return false;
 				}
 
-			}).recover(new Function<Throwable, Boolean>() {
-
-				@Override
-				public Boolean apply(Throwable ex) throws Throwable {
-					System.out.println("Error while saving Person");
-					ex.printStackTrace();
-
-					// return false;
-					throw new RuntimeException("error promising...", ex);
-				}
-			});
-
-			return savingPromise;
-
-		}
-		catch (Exception e) {
-			JPA.em().getTransaction().setRollbackOnly();
-			return new Promise<Boolean>(false);
-		}
-
+			}
+		});
 	}
 }
